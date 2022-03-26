@@ -14,6 +14,12 @@
                 "description": "The name of the Environment (e.g. dev, qa, etc.) This drives the naming of the resources. It does not have to match the lifecycle"
             }
         },
+        "Owner": {
+            "type": "string",
+            "metadata": {
+                "description": "The nickname for the owner (by default = jroblesu)"
+            }
+        },        
         "ASPName": {
             "type": "string",
             "metadata": {
@@ -22,7 +28,7 @@
         }
     },
     "variables": {
-        "EnvironmentRootName": "[toLower(concat(parameters('Environment'),parameters('AppName')))]",
+        "EnvironmentRootName": "[toLower(concat(parameters('Environment'),parameters('AppName'),parameters('Owner')))]",
         "Location": "[resourcegroup().location]",
         "SiteName": "[toLower(concat(variables('EnvironmentRootName'),'site'))]"
     },

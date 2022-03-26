@@ -8,6 +8,9 @@
     "Environment": {
       "value": "$(Environment)"
     },
+    "Owner": {
+      "value": "$(Owner)"
+    },     
     "ASPName": {
       "value": "$(ASPName)"
     }

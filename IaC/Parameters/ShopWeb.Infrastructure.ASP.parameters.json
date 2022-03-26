@@ -8,8 +8,11 @@
     "Environment": {
       "value": "$(Environment)"
     },
+    "Owner": {
+      "value": "$(Owner)"
+    },    
     "SkipASPDeploy": {
-      "value": "false"
+      "value": "$(SkipASPDeploy)"
     }
   }
 }

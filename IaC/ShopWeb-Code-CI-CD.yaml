@@ -1,0 +1,201 @@
+##################################################################################################
+# File          : ShopWeb-Code-CI-CD.yaml
+# Sypnosis      : Build and coordinate the deploy to each stage for the Project
+# Description   : 
+# - Build Section:
+#   * Download the repositories
+#   * Build the source code and execute the tests with the current branch
+# - Publish Section:
+#   * Build and Publish the Artifacts
+# - Deploy Section:
+#   * Checkout the Artifact Published and Deploy on each environment 
+#     + DEV, QAS, STG, UAT, PRD
+####################################################################################################
+
+trigger:
+  - master
+  - develop
+
+pool:
+  name: JucerPool
+
+variables:
+  - template: './Pipelines/Variables/Global_Variables.yaml'
+
+#-- Stages --#    
+stages:
+
+#-------------------#
+#-- BUILD-SECTION --#
+#-------------------#
+# This stage only runs on non master branch pipelines
+- stage: build_and_test
+  displayName: 'Build'
+  condition: ne( variables['Build.SourceBranch'], 'refs/heads/master' )
+
+  jobs:
+
+  #-- Build and Tests --#
+  - job: build_and_test
+
+    steps:
+    - template: './Pipelines/Templates/Build_And_Test.yaml'
+      parameters:
+        NetVersion: '5.0.x'
+        Projects: $(Projects)
+        TestsProjects: $(TestsProjects)
+        BuildConfiguration: $(BuildConfiguration)
+
+#---------------------#
+#-- PUBLISH-SECTION --#
+#---------------------#
+# This stage only runs on master branch pipelines
+- stage: build_and_publish
+  displayName: 'Publish'
+  #condition: eq( variables['Build.SourceBranch'], 'refs/heads/master' )
+  jobs:
+  - job: build_artifact
+    steps:
+    - template: './Pipelines/Templates/Build_And_Test.yaml'
+      parameters:
+        NetVersion: '5.0.x'
+        Projects: $(Projects)
+        TestsProjects: $(TestsProjects)
+        BuildConfiguration: $(BuildConfiguration)
+
+    - task: DotNetCoreCLI@2
+      displayName: Publish
+      inputs:
+        command: publish
+        publishWebProjects: True
+        arguments: '--configuration $(BuildConfiguration) --output $(build.artifactstagingdirectory)'
+        zipAfterPublish: True
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Artifact'
+      inputs:
+        PathtoPublish: '$(build.artifactstagingdirectory)'
+      condition: succeededOrFailed()
+
+#--------------------#
+#-- DEPLOY-SECTION --#
+#--------------------#
+#-- DEV --#
+- stage: DEV
+  dependsOn: build_and_publish
+  condition: and(succeeded('build_and_publish'), eq( variables['Build.SourceBranch'], 'refs/heads/master' ))
+
+  variables:
+    - template: './Pipelines/Variables/Dev_Variables.yaml'
+
+  jobs:
+  - deployment: Deploy_to_Dev
+    displayName: 'Deploy-DEV'
+    workspace:
+      clean: all
+    environment: NONPROD
+    pool: JucerPool
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - template: './Pipelines/Templates/Deploy_To_Azure.yaml'
+            parameters:
+              AzureSubscription: '$(AzureSubscription)'
+              AppServiceName: '$(AppServiceName)'
+
+#-- QAS --#
+- stage: QAS
+  dependsOn: DEV
+  condition: and(succeeded('DEV'), eq( variables['Build.SourceBranch'], 'refs/heads/master' ))
+
+  variables:
+    - template: './Pipelines/Variables/Qas_Variables.yaml'
+
+  jobs:
+  - deployment: Deploy_to_Qas
+    displayName: 'Deploy-QAS'
+    workspace:
+      clean: all
+    environment: NONPROD
+    pool: JucerPool
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - template: './Pipelines/Templates/Deploy_To_Azure.yaml'
+            parameters:
+              AzureSubscription: '$(AzureSubscription)'
+              AppServiceName: '$(AppServiceName)'
+
+#-- UAT --#
+- stage: UAT
+  dependsOn: DEV
+  condition: and(succeeded('DEV'), eq( variables['Build.SourceBranch'], 'refs/heads/master' ))
+
+  variables:
+    - template: './Pipelines/Variables/Uat_Variables.yaml'
+
+  jobs:
+  - deployment: Deploy_to_Uat
+    displayName: 'Deploy-UAT'
+    workspace:
+      clean: all
+    environment: NONPROD
+    pool: JucerPool
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - template: './Pipelines/Templates/Deploy_To_Azure.yaml'
+            parameters:
+              AzureSubscription: '$(AzureSubscription)'
+              AppServiceName: '$(AppServiceName)'
+
+#-- STG --#
+- stage: STG
+  dependsOn: build_and_publish
+  condition: and(succeeded('build_and_publish'), eq( variables['Build.SourceBranch'], 'refs/heads/master' ))
+
+  variables:
+    - template: './Pipelines/Variables/Stg_Variables.yaml'
+
+  jobs:
+  - deployment: Deploy_to_Stg
+    displayName: 'Deploy-STG'
+    workspace:
+      clean: all
+    environment: NONPROD
+    pool: JucerPool
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - template: './Pipelines/Templates/Deploy_To_Azure.yaml'
+            parameters:
+              AzureSubscription: '$(AzureSubscription)'
+              AppServiceName: '$(AppServiceName)'
+
+#-- PRD --#
+- stage: PRD
+  dependsOn: QAS
+  condition: and(succeeded('QAS'), eq( variables['Build.SourceBranch'], 'refs/heads/master' ))
+
+  variables:
+    - template: './Pipelines/Variables/Prd_Variables.yaml'
+
+  jobs:
+  - deployment: Deploy_to_Prd
+    displayName: 'Deploy-PRD'
+    workspace:
+      clean: all
+    environment: PROD
+    pool: JucerPool
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - template: './Pipelines/Templates/Deploy_To_Azure.yaml'
+            parameters:
+              AzureSubscription: '$(AzureSubscription)'
+              AppServiceName: '$(AppServiceName)'

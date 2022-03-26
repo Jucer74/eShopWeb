@@ -1,6 +1,6 @@
-﻿using Microsoft.eShopWeb.ApplicationCore.Entities.OrderAggregate;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.eShopWeb.ApplicationCore.Entities.OrderAggregate;
 using Microsoft.eShopWeb.ApplicationCore.Interfaces;
-using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 
 namespace Microsoft.eShopWeb.Infrastructure.Data
@@ -15,7 +15,7 @@ namespace Microsoft.eShopWeb.Infrastructure.Data
         {
             return _dbContext.Orders
                 .Include(o => o.OrderItems)
-                .Include($"{nameof(Order.OrderItems)}.{nameof(OrderItem.ItemOrdered)}")
+                .ThenInclude(i => i.ItemOrdered)
                 .FirstOrDefaultAsync(x => x.Id == id);
         }
     }
