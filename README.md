@@ -1,4 +1,4 @@
-# COnfiguration Management
+# Configuration Management
 Espacio de Trabajo del cusro d econtrol de la coonfiguracion Documentacion TEcnica
 
 # Microsoft eShopOnWeb ASP.NET Core Reference Application
